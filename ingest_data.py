@@ -1,45 +1,66 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
+import os
 from time import time
+
 import pandas as pd
-
-file_path = 'C:/Datatalks/yellow_tripdata_2021-01.csv'
-df = pd.read_csv(file_path)
-
-print(pd.io.sql.get_schema(df, name='yellow_taxi_data'))
-
 from sqlalchemy import create_engine
+from ingest_config import config
 
-engine = create_engine('postgresql://root:root@localhost:5432/ny_taxi')
 
-engine.connect()
+def main(config):
+    user = config.db_user
+    password = config.db_password
+    host = config.db_host 
+    port = config.db_port 
+    db = config.db_name
+    table_name = config.table_name
+    url = config.url
+    
+    # the backup files are gzipped, and it's important to keep the correct extension
+    # for pandas to be able to open the file
+    if url.endswith('.csv.gz'):
+        csv_name = 'output.csv.gz'
+    else:
+        csv_name = 'output.csv'
 
-print(pd.io.sql.get_schema(df, name='yellow_taxi_data', con=engine))
+    os.system(f"wget {url} -O {csv_name}")
 
-df_iter = pd.read_csv(file_path, iterator=True, chunksize=100000)
+    engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{db}')
 
-df = next(df_iter)
+    df_iter = pd.read_csv(csv_name, iterator=True, chunksize=100000)
 
-df.head(0).to_sql(name='yellow_taxi_data', con=engine, if_exists='replace')
-
-while True:
-    t_start = time()
     df = next(df_iter)
 
     df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
     df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
 
-    df.to_sql(name='yellow_taxi_data', con=engine, if_exists='append')
+    df.head(n=0).to_sql(name=table_name, con=engine, if_exists='replace')
 
-    t_end = time()
-
-    print('inserted another chunck ....%.03f' % (t_end - t_start))
-
-# In[ ]:
+    df.to_sql(name=table_name, con=engine, if_exists='append')
 
 
+    while True: 
 
+        try:
+            t_start = time()
+            
+            df = next(df_iter)
 
+            df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
+            df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
+
+            df.to_sql(name=table_name, con=engine, if_exists='append')
+
+            t_end = time()
+
+            print('inserted another chunk, took %.3f second' % (t_end - t_start))
+
+        except StopIteration:
+            print("Finished ingesting data into the postgres database")
+            break
+
+if __name__ == '__main__':
+
+    main()
