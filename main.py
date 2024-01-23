@@ -1,3 +1,5 @@
+import schedule
+import time
 from DBservice import DBservice
 from dataDownload import DataDownload
 from ingest_config import config
@@ -25,3 +27,9 @@ def run_tasks():
 
 if __name__ == '__main__':
     run_tasks()
+    # print("starting scheduled tasks")
+    # schedule.every(12).hours.do(run_tasks)
+    #
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(1)

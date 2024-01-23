@@ -37,7 +37,6 @@ class DBservice:
         df.to_sql(name=table_name, con=engine, if_exists='append')
         print('loaded first chunk')
 
-
         while True:
             try:
                 t_start = time()
