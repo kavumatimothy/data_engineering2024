@@ -1,8 +1,10 @@
 FROM python:3.9.1
 
 RUN apt-get install wget
-RUN pip install pandas psycopg2 sqlalchemy pgcli fastparquet
+RUN pip install pandas sqlalchemy psycopg2
 
 WORKDIR /app
 
-ENTRYPOINT ["bash"]
+COPY . /app
+
+ENTRYPOINT [ "python", "./main.py" ]
